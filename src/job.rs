@@ -122,9 +122,10 @@ impl MyWS {
 
 #[post("/enqueue")]
 async fn enqueue_job(job: web::Json<Job>, redis: web::Data<Addr<RedisActor>>) -> Result<HttpResponse, Error> {
-    let res = redis.send(RCmd(resp_array!["RPUSH", "jobQueue", &job.script])).await?;
+    let res = redis.send(RCmd(resp_array!["XADD", "jobStream", "*", "script", &job.script])).await?;
     match res {
-        Ok(RespValue::Integer(_)) => {
+        Ok(RespValue::BulkString(id)) => {
+            println!("{}", str::from_utf8(&id).unwrap());
             Ok(HttpResponse::Ok().body("Successfully enqueued job"))
         }
         _ => {
