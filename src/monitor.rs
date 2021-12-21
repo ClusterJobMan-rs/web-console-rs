@@ -1,10 +1,31 @@
+use std::collections::HashMap;
 use std::string::*;
 
 use actix::prelude::*;
-use actix_web::{get, web, HttpResponse};
 use actix_redis::{Command as RCmd, RedisActor};
-use redis_async::{resp::{RespValue, FromResp}, resp_array};
+use actix_web::{get, web, HttpResponse};
+use redis_async::{
+    resp::{FromResp, RespValue},
+    resp_array,
+};
 use serde::{Deserialize, Serialize};
+
+#[derive(Serialize)]
+struct Nodes {
+    nodes: HashMap<String, Status>,
+}
+
+impl Nodes {
+    fn new() -> Nodes {
+        Nodes {
+            nodes: HashMap::new(),
+        }
+    }
+
+    fn add(&mut self, addr: String, status: Status) {
+        self.nodes.insert(addr, status);
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 struct Status {
@@ -46,57 +67,138 @@ impl Status {
 }
 
 #[get("/status")]
-async fn status(redis: web::Data<Addr<RedisActor>>) -> HttpResponse {
-    let mut status: Status = Status::new();
+async fn get_status(redis: web::Data<Addr<RedisActor>>) -> HttpResponse {
+    let mut nodes: Nodes = Nodes::new();
 
-    let addr: Vec<u8>;
-    match redis.send(RCmd(resp_array!["SMEMBERS", "nodes"])).await.unwrap() {
-        Ok(a) => {
-            match a {
-                RespValue::Array(v) => {
-                    addr = FromResp::from_resp(v[0].clone()).unwrap();
-                }
-                _ => {
-                    panic!("not array");
-                }
-            }
-        },
-        Err(e) => {
-            panic!("{:?}", e);
+    match redis
+        .send(RCmd(resp_array!["SMEMBERS", "nodes"]))
+        .await
+        .unwrap()
+    {
+        Ok(a) => match a {
+            RespValue::Array(v) => {
+                while let Some(addr) = v.pop() {
+                    match FromResp::from_resp(addr) {
+                        Ok(s) => {
+                            match String::from_utf8(s) {
+                                Ok(addr) => {
+                                    let mut status = Status::new();
+                                    match redis
+                                        .send(RCmd(resp_array![
+                                            "HVALS",
+                                            format!("{}_status", format!("{}", addr))
+                                        ]))
+                                        .await
+                                    {
+                                        Ok(err) => match err {
+                                            Ok(resp) => match resp {
+                                                RespValue::Array(v) => {
+                                                    status.os_type = String::from_utf8(
+                                                        FromResp::from_resp(v[0].clone()).unwrap(),
+                                                    )
+                                                    .unwrap();
+                                                    status.os_release = String::from_utf8(
+                                                        FromResp::from_resp(v[1].clone()).unwrap(),
+                                                    )
+                                                    .unwrap();
+                                                    status.cpu_num = String::from_utf8(
+                                                        FromResp::from_resp(v[2].clone()).unwrap(),
+                                                    )
+                                                    .unwrap()
+                                                    .parse::<u32>()
+                                                    .unwrap();
+                                                    status.cpu_speed = String::from_utf8(
+                                                        FromResp::from_resp(v[3].clone()).unwrap(),
+                                                    )
+                                                    .unwrap()
+                                                    .parse::<u64>()
+                                                    .unwrap();
+                                                    status.proc_total = String::from_utf8(
+                                                        FromResp::from_resp(v[4].clone()).unwrap(),
+                                                    )
+                                                    .unwrap()
+                                                    .parse::<u64>()
+                                                    .unwrap();
+                                                    status.cpu_user = String::from_utf8(
+                                                        FromResp::from_resp(v[5].clone()).unwrap(),
+                                                    )
+                                                    .unwrap()
+                                                    .parse::<f32>()
+                                                    .unwrap();
+                                                    status.cpu_nice = String::from_utf8(
+                                                        FromResp::from_resp(v[6].clone()).unwrap(),
+                                                    )
+                                                    .unwrap()
+                                                    .parse::<f32>()
+                                                    .unwrap();
+                                                    status.cpu_system = String::from_utf8(
+                                                        FromResp::from_resp(v[7].clone()).unwrap(),
+                                                    )
+                                                    .unwrap()
+                                                    .parse::<f32>()
+                                                    .unwrap();
+                                                    status.cpu_idle = String::from_utf8(
+                                                        FromResp::from_resp(v[8].clone()).unwrap(),
+                                                    )
+                                                    .unwrap()
+                                                    .parse::<f32>()
+                                                    .unwrap();
+                                                    status.load_one = String::from_utf8(
+                                                        FromResp::from_resp(v[9].clone()).unwrap(),
+                                                    )
+                                                    .unwrap()
+                                                    .parse::<f32>()
+                                                    .unwrap();
+                                                    status.load_five = String::from_utf8(
+                                                        FromResp::from_resp(v[10].clone()).unwrap(),
+                                                    )
+                                                    .unwrap()
+                                                    .parse::<f32>()
+                                                    .unwrap();
+                                                    status.load_fifteen = String::from_utf8(
+                                                        FromResp::from_resp(v[11].clone()).unwrap(),
+                                                    )
+                                                    .unwrap()
+                                                    .parse::<f32>()
+                                                    .unwrap();
+                                                    status.mem_total = String::from_utf8(
+                                                        FromResp::from_resp(v[12].clone()).unwrap(),
+                                                    )
+                                                    .unwrap()
+                                                    .parse::<u64>()
+                                                    .unwrap();
+                                                    status.mem_free = String::from_utf8(
+                                                        FromResp::from_resp(v[13].clone()).unwrap(),
+                                                    )
+                                                    .unwrap()
+                                                    .parse::<u64>()
+                                                    .unwrap();
+                                                }
+                                                _ => {
+                                                    panic!("not array");
+                                                }
+                                            },
+                                            Err(e) => {
+                                                panic!("{:?}", e);
+                                            }
+                                        },
+                                        Err(e) => {
+                                            panic!("{:?}", e);
+                                        }
 
-        }
-    }
-    //let addr_arr = FromResp::from_resp(addr).unwrap();
-
-    match redis.send(RCmd(resp_array!["HVALS", format!("{}_status", format!("{}", String::from_utf8(addr).unwrap()))])).await {
-        Ok(err) => {
-            match err {
-                Ok(resp) => {
-                    match resp {
-                        RespValue::Array(v) => {
-                            status.os_type = String::from_utf8(FromResp::from_resp(v[0].clone()).unwrap()).unwrap();
-                            status.os_release = String::from_utf8(FromResp::from_resp(v[1].clone()).unwrap()).unwrap();
-                            status.cpu_num = String::from_utf8(FromResp::from_resp(v[2].clone()).unwrap()).unwrap().parse::<u32>().unwrap();
-                            status.cpu_speed = String::from_utf8(FromResp::from_resp(v[3].clone()).unwrap()).unwrap().parse::<u64>().unwrap();
-                            status.proc_total = String::from_utf8(FromResp::from_resp(v[4].clone()).unwrap()).unwrap().parse::<u64>().unwrap();
-                            status.cpu_user = String::from_utf8(FromResp::from_resp(v[5].clone()).unwrap()).unwrap().parse::<f32>().unwrap();
-                            status.cpu_nice = String::from_utf8(FromResp::from_resp(v[6].clone()).unwrap()).unwrap().parse::<f32>().unwrap();
-                            status.cpu_system = String::from_utf8(FromResp::from_resp(v[7].clone()).unwrap()).unwrap().parse::<f32>().unwrap();
-                            status.cpu_idle = String::from_utf8(FromResp::from_resp(v[8].clone()).unwrap()).unwrap().parse::<f32>().unwrap();
-                            status.load_one = String::from_utf8(FromResp::from_resp(v[9].clone()).unwrap()).unwrap().parse::<f32>().unwrap();
-                            status.load_five = String::from_utf8(FromResp::from_resp(v[10].clone()).unwrap()).unwrap().parse::<f32>().unwrap();
-                            status.load_fifteen = String::from_utf8(FromResp::from_resp(v[11].clone()).unwrap()).unwrap().parse::<f32>().unwrap();
-                            status.mem_total = String::from_utf8(FromResp::from_resp(v[12].clone()).unwrap()).unwrap().parse::<u64>().unwrap();
-                            status.mem_free = String::from_utf8(FromResp::from_resp(v[13].clone()).unwrap()).unwrap().parse::<u64>().unwrap();
-                        },
-                        _ => {
-                            panic!("not array");
+                                    }
+                                    nodes.add(addr, status);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            panic!("{:?}", e);
                         }
                     }
-                },
-                Err(e) => {
-                    panic!("{:?}", e);
                 }
+            }
+            _ => {
+                panic!("not array");
             }
         },
         Err(e) => {
@@ -104,5 +206,5 @@ async fn status(redis: web::Data<Addr<RedisActor>>) -> HttpResponse {
         }
     }
 
-    HttpResponse::Ok().json(status)
+    HttpResponse::Ok().json(nodes)
 }

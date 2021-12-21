@@ -92,22 +92,6 @@ impl MyWS {
     fn recv_tcp(&self, ctx: &mut <Self as Actor>::Context) {
         let rec = ctx.address().recipient();
         let fut = async move {
-            /*
-            let mut listener = TcpListener::bind("127.0.0.1:33333").await.expect("could not bind tcp socket");
-            loop {
-                let mut buf = [0; 1024];
-                match listener.accept().await {
-                    Ok((mut stream, _)) => {
-                        stream.read(&mut buf).await.expect("could not read buffer");
-                        rec.do_send(OutLn { line: str::from_utf8(&buf).unwrap().to_string()}).expect("failed to send string");
-                    }
-                    Err(e) => {
-                        eprintln!("failed to read buffer: {}", e);
-                    }
-                }
-                
-            }
-            */
             loop {
                 let mut outputs = OUTPUTS.get().unwrap().lock().await;
                 while let Some(output) = outputs.pop_front() {

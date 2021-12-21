@@ -9,10 +9,8 @@ use crate::tcp_connector::*;
 use std::collections::VecDeque;
 
 use actix_files::NamedFile;
-use actix_web::{
-    get, web, App, HttpRequest, HttpServer, Result,
-};
 use actix_redis::RedisActor;
+use actix_web::{get, web, App, HttpRequest, HttpServer, Result};
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use tokio::sync::Mutex;
 
@@ -47,8 +45,10 @@ async fn main() -> std::io::Result<()> {
     STREAMS.set(Mutex::new(VecDeque::new())).unwrap();
     OUTPUTS.set(Mutex::new(VecDeque::new())).unwrap();
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:33333").await.expect("could not bind tcp socket");
-    
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:33333")
+        .await
+        .expect("could not bind tcp socket");
+
     tokio::spawn(async move {
         receiver(listener).await;
     });
@@ -59,15 +59,12 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .data(redis_addr)
             .service(index)
-            .service(status)
+            .service(get_status)
             .service(enqueue_job)
-            .service(web::resource("/ws/").route(web::get().to(script_start))
-        )
-        .default_service(
-            web::route().to(not_found)
-        )
+            .service(web::resource("/ws/").route(web::get().to(script_start)))
+            .default_service(web::route().to(not_found))
     })
-        .bind_openssl("127.0.0.1:8080", builder)?
-        .run()
-        .await
+    .bind_openssl("127.0.0.1:8080", builder)?
+    .run()
+    .await
 }
