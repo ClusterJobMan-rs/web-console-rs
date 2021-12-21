@@ -12,6 +12,7 @@
     <textarea readonly cols="80" rows="40" id="output"
         style="overflow:scroll; font-family:monospace;"></textarea>
     <br>
+    <input id="parallelNum" type="number" value="1" min="1">
     <button type="submit" id="sendButton" style="font-size: 20px;">Send</button>
     <button type="submit" id="clearButton" style="font-size: 20px;">Clear</button>
     <h4>Server OS</h4>
@@ -54,7 +55,7 @@
         }
 
         async function getStatus() {
-            var getreq = new XMLHttpRequest();
+            let getreq = new XMLHttpRequest();
             getreq.open('GET', 'https://127.0.0.1:8080/status');
             await getreq.send();
 
@@ -64,34 +65,34 @@
                 } else if (getreq.status != 200) {
                     console.log("failed");
                 } else {
-                    var statusData = JSON.parse(getreq.responseText);
-                    var elem = document.getElementById("osType");
+                    let statusData = JSON.parse(getreq.responseText);
+                    let elem = document.getElementById("osType");
                     elem.innerText = statusData.os_type;
-                    var elem = document.getElementById("osRelease");
+                    let elem = document.getElementById("osRelease");
                     elem.innerText = statusData.os_release;
-                    var elem = document.getElementById("cpuNum");
+                    let elem = document.getElementById("cpuNum");
                     elem.innerText = statusData.cpu_num;
-                    var elem = document.getElementById("cpuSpeed");
+                    let elem = document.getElementById("cpuSpeed");
                     elem.innerText = statusData.cpu_speed;
-                    var elem = document.getElementById("cpuProcTotal");
+                    let elem = document.getElementById("cpuProcTotal");
                     elem.innerText = statusData.proc_total;
-                    var elem = document.getElementById("cpuUser");
+                    let elem = document.getElementById("cpuUser");
                     elem.innerText = statusData.cpu_user;
-                    var elem = document.getElementById("cpuNice");
+                    let elem = document.getElementById("cpuNice");
                     elem.innerText = statusData.cpu_nice;
-                    var elem = document.getElementById("cpuSystem");
+                    let elem = document.getElementById("cpuSystem");
                     elem.innerText = statusData.cpu_system;
-                    var elem = document.getElementById("cpuIdle");
+                    let elem = document.getElementById("cpuIdle");
                     elem.innerText = statusData.cpu_idle;
-                    var elem = document.getElementById("cpuLoadOne");
+                    let elem = document.getElementById("cpuLoadOne");
                     elem.innerText = statusData.load_one;
-                    var elem = document.getElementById("cpuLoadFive");
+                    let elem = document.getElementById("cpuLoadFive");
                     elem.innerText = statusData.load_five;
-                    var elem = document.getElementById("cpuLoadFifteen");
+                    let elem = document.getElementById("cpuLoadFifteen");
                     elem.innerText = statusData.load_fifteen;
-                    var elem = document.getElementById("memTotal");
+                    let elem = document.getElementById("memTotal");
                     elem.innerText = statusData.mem_total;
-                    var elem = document.getElementById("memFree");
+                    let elem = document.getElementById("memFree");
                     elem.innerText = statusData.mem_free;
 
                     cpuChart.data.datasets[0].data[0] = statusData.cpu_user;
@@ -104,9 +105,9 @@
                     memChart.data.datasets[0].data[0] = statusData.mem_total - statusData.mem_free;
                     memChart.update();
 
-                    var elem = document.getElementById("cpuUsage");
+                    let elem = document.getElementById("cpuUsage");
                     elem.innerText = "CPU Usage: " + (Math.round(10000 - statusData.cpu_idle * 10000) / 100) + "%";
-                    var elem = document.getElementById("memUsage");
+                    let elem = document.getElementById("memUsage");
                     elem.innerText = "Memory Usage: " + (Math.round((statusData.mem_total - statusData.mem_free) / 10000000) / 100) + "GB /" + (Math.round(statusData.mem_total / 10000000) / 100) + "GB";
 
                 }
@@ -116,7 +117,7 @@
             getStatus();
         }
 
-        var isEstalbished = false;
+        let isEstalbished = false;
         webSocket = new WebSocket((window.location.protocol == 'https:' && 'wss://' || 'ws://') + window.location.host + '/ws/');
         webSocket.onopen = function (event) {
             isEstalbished = true;
@@ -124,6 +125,7 @@
         //let inputEmail = document.getElementById('email')
         let inputScript = document.getElementById('input');
         let output = document.getElementById('output');
+
         webSocket.onmessage = function (event) {
             console.log(event.data);
             output.value += event.data + '\n';
@@ -131,16 +133,17 @@
         }
 
         document.getElementById('sendButton').onclick = function () {
-            //var emailHash = await digestMessage(inputEmail.value.toString());
+            //let emailHash = await digestMessage(inputEmail.value.toString());
 
-            var lines = inputScript.value.toString();
+            let lines = inputScript.value.toString();
+            let parallelNum = document.getElementById('parallelNum').value;
             //console.log(lines);
-            var postData = {
+            let postData = {
                 //'user': emailHash,
             'script': lines
             };
             //console.log(postData);
-            var postTxt = JSON.stringify(postData);
+            let postTxt = JSON.stringify(postData);
             //console.log(postTxt);
 
             if (!isEstalbished) {
@@ -150,7 +153,7 @@
 
             //webSocket.send(postTxt);
             
-            var postreq = new XMLHttpRequest();
+            let postreq = new XMLHttpRequest();
             postreq.open('POST', 'https://127.0.0.1:8080/enqueue');
             postreq.setRequestHeader('content-type', 'application/json');
             postreq.send(postTxt);

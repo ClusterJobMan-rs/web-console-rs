@@ -76,121 +76,121 @@ async fn get_status(redis: web::Data<Addr<RedisActor>>) -> HttpResponse {
         .unwrap()
     {
         Ok(a) => match a {
-            RespValue::Array(v) => {
+            RespValue::Array(mut v) => {
                 while let Some(addr) = v.pop() {
                     match FromResp::from_resp(addr) {
-                        Ok(s) => {
-                            match String::from_utf8(s) {
-                                Ok(addr) => {
-                                    let mut status = Status::new();
-                                    match redis
-                                        .send(RCmd(resp_array![
-                                            "HVALS",
-                                            format!("{}_status", format!("{}", addr))
-                                        ]))
-                                        .await
-                                    {
-                                        Ok(err) => match err {
-                                            Ok(resp) => match resp {
-                                                RespValue::Array(v) => {
-                                                    status.os_type = String::from_utf8(
-                                                        FromResp::from_resp(v[0].clone()).unwrap(),
-                                                    )
-                                                    .unwrap();
-                                                    status.os_release = String::from_utf8(
-                                                        FromResp::from_resp(v[1].clone()).unwrap(),
-                                                    )
-                                                    .unwrap();
-                                                    status.cpu_num = String::from_utf8(
-                                                        FromResp::from_resp(v[2].clone()).unwrap(),
-                                                    )
-                                                    .unwrap()
-                                                    .parse::<u32>()
-                                                    .unwrap();
-                                                    status.cpu_speed = String::from_utf8(
-                                                        FromResp::from_resp(v[3].clone()).unwrap(),
-                                                    )
-                                                    .unwrap()
-                                                    .parse::<u64>()
-                                                    .unwrap();
-                                                    status.proc_total = String::from_utf8(
-                                                        FromResp::from_resp(v[4].clone()).unwrap(),
-                                                    )
-                                                    .unwrap()
-                                                    .parse::<u64>()
-                                                    .unwrap();
-                                                    status.cpu_user = String::from_utf8(
-                                                        FromResp::from_resp(v[5].clone()).unwrap(),
-                                                    )
-                                                    .unwrap()
-                                                    .parse::<f32>()
-                                                    .unwrap();
-                                                    status.cpu_nice = String::from_utf8(
-                                                        FromResp::from_resp(v[6].clone()).unwrap(),
-                                                    )
-                                                    .unwrap()
-                                                    .parse::<f32>()
-                                                    .unwrap();
-                                                    status.cpu_system = String::from_utf8(
-                                                        FromResp::from_resp(v[7].clone()).unwrap(),
-                                                    )
-                                                    .unwrap()
-                                                    .parse::<f32>()
-                                                    .unwrap();
-                                                    status.cpu_idle = String::from_utf8(
-                                                        FromResp::from_resp(v[8].clone()).unwrap(),
-                                                    )
-                                                    .unwrap()
-                                                    .parse::<f32>()
-                                                    .unwrap();
-                                                    status.load_one = String::from_utf8(
-                                                        FromResp::from_resp(v[9].clone()).unwrap(),
-                                                    )
-                                                    .unwrap()
-                                                    .parse::<f32>()
-                                                    .unwrap();
-                                                    status.load_five = String::from_utf8(
-                                                        FromResp::from_resp(v[10].clone()).unwrap(),
-                                                    )
-                                                    .unwrap()
-                                                    .parse::<f32>()
-                                                    .unwrap();
-                                                    status.load_fifteen = String::from_utf8(
-                                                        FromResp::from_resp(v[11].clone()).unwrap(),
-                                                    )
-                                                    .unwrap()
-                                                    .parse::<f32>()
-                                                    .unwrap();
-                                                    status.mem_total = String::from_utf8(
-                                                        FromResp::from_resp(v[12].clone()).unwrap(),
-                                                    )
-                                                    .unwrap()
-                                                    .parse::<u64>()
-                                                    .unwrap();
-                                                    status.mem_free = String::from_utf8(
-                                                        FromResp::from_resp(v[13].clone()).unwrap(),
-                                                    )
-                                                    .unwrap()
-                                                    .parse::<u64>()
-                                                    .unwrap();
-                                                }
-                                                _ => {
-                                                    panic!("not array");
-                                                }
-                                            },
-                                            Err(e) => {
-                                                panic!("{:?}", e);
+                        Ok(s) => match String::from_utf8(s) {
+                            Ok(addr) => {
+                                let mut status = Status::new();
+                                match redis
+                                    .send(RCmd(resp_array![
+                                        "HVALS",
+                                        format!("{}_status", format!("{}", addr))
+                                    ]))
+                                    .await
+                                {
+                                    Ok(err) => match err {
+                                        Ok(resp) => match resp {
+                                            RespValue::Array(v) => {
+                                                status.os_type = String::from_utf8(
+                                                    FromResp::from_resp(v[0].clone()).unwrap(),
+                                                )
+                                                .unwrap();
+                                                status.os_release = String::from_utf8(
+                                                    FromResp::from_resp(v[1].clone()).unwrap(),
+                                                )
+                                                .unwrap();
+                                                status.cpu_num = String::from_utf8(
+                                                    FromResp::from_resp(v[2].clone()).unwrap(),
+                                                )
+                                                .unwrap()
+                                                .parse::<u32>()
+                                                .unwrap();
+                                                status.cpu_speed = String::from_utf8(
+                                                    FromResp::from_resp(v[3].clone()).unwrap(),
+                                                )
+                                                .unwrap()
+                                                .parse::<u64>()
+                                                .unwrap();
+                                                status.proc_total = String::from_utf8(
+                                                    FromResp::from_resp(v[4].clone()).unwrap(),
+                                                )
+                                                .unwrap()
+                                                .parse::<u64>()
+                                                .unwrap();
+                                                status.cpu_user = String::from_utf8(
+                                                    FromResp::from_resp(v[5].clone()).unwrap(),
+                                                )
+                                                .unwrap()
+                                                .parse::<f32>()
+                                                .unwrap();
+                                                status.cpu_nice = String::from_utf8(
+                                                    FromResp::from_resp(v[6].clone()).unwrap(),
+                                                )
+                                                .unwrap()
+                                                .parse::<f32>()
+                                                .unwrap();
+                                                status.cpu_system = String::from_utf8(
+                                                    FromResp::from_resp(v[7].clone()).unwrap(),
+                                                )
+                                                .unwrap()
+                                                .parse::<f32>()
+                                                .unwrap();
+                                                status.cpu_idle = String::from_utf8(
+                                                    FromResp::from_resp(v[8].clone()).unwrap(),
+                                                )
+                                                .unwrap()
+                                                .parse::<f32>()
+                                                .unwrap();
+                                                status.load_one = String::from_utf8(
+                                                    FromResp::from_resp(v[9].clone()).unwrap(),
+                                                )
+                                                .unwrap()
+                                                .parse::<f32>()
+                                                .unwrap();
+                                                status.load_five = String::from_utf8(
+                                                    FromResp::from_resp(v[10].clone()).unwrap(),
+                                                )
+                                                .unwrap()
+                                                .parse::<f32>()
+                                                .unwrap();
+                                                status.load_fifteen = String::from_utf8(
+                                                    FromResp::from_resp(v[11].clone()).unwrap(),
+                                                )
+                                                .unwrap()
+                                                .parse::<f32>()
+                                                .unwrap();
+                                                status.mem_total = String::from_utf8(
+                                                    FromResp::from_resp(v[12].clone()).unwrap(),
+                                                )
+                                                .unwrap()
+                                                .parse::<u64>()
+                                                .unwrap();
+                                                status.mem_free = String::from_utf8(
+                                                    FromResp::from_resp(v[13].clone()).unwrap(),
+                                                )
+                                                .unwrap()
+                                                .parse::<u64>()
+                                                .unwrap();
+                                            }
+                                            _ => {
+                                                panic!("not array");
                                             }
                                         },
                                         Err(e) => {
                                             panic!("{:?}", e);
                                         }
-
+                                    },
+                                    Err(e) => {
+                                        panic!("{:?}", e);
                                     }
-                                    nodes.add(addr, status);
                                 }
+                                nodes.add(addr, status);
                             }
-                        }
+                            Err(e) => {
+                                panic!("{:?}", e);
+                            }
+                        },
                         Err(e) => {
                             panic!("{:?}", e);
                         }

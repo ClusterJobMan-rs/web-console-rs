@@ -1,15 +1,13 @@
 use crate::tcp_connector::*;
 
-use std::time::{Duration, Instant};
 use std::str;
+use std::time::{Duration, Instant};
 
 use actix::prelude::*;
 use actix::AsyncContext;
-use actix_web::{
-    post, web, Error, HttpRequest, HttpResponse, Result,
-};
-use actix_web_actors::ws;
 use actix_redis::{Command as RCmd, RedisActor};
+use actix_web::{post, web, Error, HttpRequest, HttpResponse, Result};
+use actix_web_actors::ws;
 use redis_async::{resp::RespValue, resp_array};
 use serde::{Deserialize, Serialize};
 //use tokio::io::AsyncReadExt;
@@ -52,7 +50,7 @@ impl Actor for MyWS {
 }
 
 impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWS {
-    fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError,>, ctx: &mut Self::Context) {
+    fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
         //println!("WS: {:?}", msg);
         match msg {
             Ok(ws::Message::Ping(msg)) => {
@@ -96,7 +94,8 @@ impl MyWS {
                 let mut outputs = OUTPUTS.get().unwrap().lock().await;
                 while let Some(output) = outputs.pop_front() {
                     println!("{:?}", &output);
-                    rec.do_send(OutLn { line: output }).expect("failed to send string");
+                    rec.do_send(OutLn { line: output })
+                        .expect("failed to send string");
                 }
             }
         };
@@ -105,8 +104,19 @@ impl MyWS {
 }
 
 #[post("/enqueue")]
-async fn enqueue_job(job: web::Json<Job>, redis: web::Data<Addr<RedisActor>>) -> Result<HttpResponse, Error> {
-    let res = redis.send(RCmd(resp_array!["XADD", "jobStream", "*", "script", &job.script])).await?;
+async fn enqueue_job(
+    job: web::Json<Job>,
+    redis: web::Data<Addr<RedisActor>>,
+) -> Result<HttpResponse, Error> {
+    let res = redis
+        .send(RCmd(resp_array![
+            "XADD",
+            "jobStream",
+            "*",
+            "script",
+            &job.script
+        ]))
+        .await?;
     match res {
         Ok(RespValue::BulkString(id)) => {
             println!("{}", str::from_utf8(&id).unwrap());
