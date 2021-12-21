@@ -9,12 +9,42 @@
     <h3>Execute bash script</h3>
     <!-- ><p>Your E-mail address <input type="text" id="email"></p><-->
     <textarea cols="80" rows="40" id="input" style="overflow:scroll; font-family:monospace;"></textarea>
-    <textarea readonly cols="80" rows="40" id="output"
-        style="overflow:scroll; font-family:monospace;"></textarea>
+    <textarea readonly cols="80" rows="40" id="output" style="overflow:scroll; font-family:monospace;"></textarea>
     <br>
     <input id="parallelNum" type="number" value="1" min="1">
     <button type="submit" id="sendButton" style="font-size: 20px;">Send</button>
     <button type="submit" id="clearButton" style="font-size: 20px;">Clear</button>
+
+    <table>
+        <thead>
+            <tr>
+                <td rowspan="2">host</td>
+                <td colspan="2">OS</td>
+                <td colspan="7">CPU</td>
+                <td colspan="3">Load Average</td>
+                <td colspan="2">Memory</td>
+            </tr>
+            <tr>
+                <td>Type</td>
+                <td>Release</td>
+                <td>Num</td>
+                <td>Speed</td>
+                <td>Proc Total</td>
+                <td>User</td>
+                <td>Nice</td>
+                <td>System</td>
+                <td>Idle</td>
+                <td>One</td>
+                <td>Five</td>
+                <td>Fifteen</td>
+                <td>total</td>
+                <td>free</td>
+            </tr>
+        </thead>
+        <tbody id="status"></tbody>
+    </table>
+
+    <!--
     <h4>Server OS</h4>
     <p><span id="osType">null</span></p>
     <p><span id="osRelease">null</span></p>
@@ -44,10 +74,11 @@
             <p id="memUsage">Memory Usage: </p>
         </div>
     </div>
+    -->
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.6.0/chart.js"
+    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.6.0/chart.js"
         integrity="sha512-CWVDkca3f3uAWgDNVzW+W4XJbiC3CH84P2aWZXj+DqI6PNbTzXbl1dIzEHeNJpYSn4B6U8miSZb/hCws7FnUZA=="
-        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>-->
 
     <script>
         function wait(t) {
@@ -66,50 +97,80 @@
                     console.log("failed");
                 } else {
                     let statusData = JSON.parse(getreq.responseText);
-                    let elem = document.getElementById("osType");
-                    elem.innerText = statusData.os_type;
-                    let elem = document.getElementById("osRelease");
-                    elem.innerText = statusData.os_release;
-                    let elem = document.getElementById("cpuNum");
-                    elem.innerText = statusData.cpu_num;
-                    let elem = document.getElementById("cpuSpeed");
-                    elem.innerText = statusData.cpu_speed;
-                    let elem = document.getElementById("cpuProcTotal");
-                    elem.innerText = statusData.proc_total;
-                    let elem = document.getElementById("cpuUser");
-                    elem.innerText = statusData.cpu_user;
-                    let elem = document.getElementById("cpuNice");
-                    elem.innerText = statusData.cpu_nice;
-                    let elem = document.getElementById("cpuSystem");
-                    elem.innerText = statusData.cpu_system;
-                    let elem = document.getElementById("cpuIdle");
-                    elem.innerText = statusData.cpu_idle;
-                    let elem = document.getElementById("cpuLoadOne");
-                    elem.innerText = statusData.load_one;
-                    let elem = document.getElementById("cpuLoadFive");
-                    elem.innerText = statusData.load_five;
-                    let elem = document.getElementById("cpuLoadFifteen");
-                    elem.innerText = statusData.load_fifteen;
-                    let elem = document.getElementById("memTotal");
-                    elem.innerText = statusData.mem_total;
-                    let elem = document.getElementById("memFree");
-                    elem.innerText = statusData.mem_free;
+                    let tbody = document.getElementById("status");
+                    Object.entries(statusData.nodes).forEach(([key, value]) => {
+                        let trElems = tbody.rows;
+                        let newNode = true;
+                        for (i = 0; i < trElems.length; i++) {
+                            if (trElems[i].cells[0].firstChild.data == key) {
+                                trElems[i].cells[1].firstChild.data = value.os_type;
+                                trElems[i].cells[2].firstChild.data = value.os_release;
+                                trElems[i].cells[3].firstChild.data = value.cpu_num;
+                                trElems[i].cells[4].firstChild.data = value.cpu_speed;
+                                trElems[i].cells[5].firstChild.data = value.proc_total;
+                                trElems[i].cells[6].firstChild.data = value.cpu_user;
+                                trElems[i].cells[7].firstChild.data = value.cpu_nice;
+                                trElems[i].cells[8].firstChild.data = value.cpu_system;
+                                trElems[i].cells[9].firstChild.data = value.cpu_idle;
+                                trElems[i].cells[10].firstChild.data = value.load_one;
+                                trElems[i].cells[11].firstChild.data = value.load_five;
+                                trElems[i].cells[12].firstChild.data = value.load_fifteen;
+                                trElems[i].cells[13].firstChild.data = value.mem_total;
+                                trElems[i].cells[14].firstChild.data = value.mem_free;
+                                newNode = false;
+                                break;
+                            }
+                        }
+                        if (!newNode) return;
+                        let trElem = tbody.insertRow(-1);
+                        let cellElem = trElem.insertCell(-1);
+                        cellElem.appendChild(document.createTextNode(key));
+                        cellElem = trElem.insertCell(-1);
+                        cellElem.appendChild(document.createTextNode(value.os_type));
+                        cellElem = trElem.insertCell(-1);
+                        cellElem.appendChild(document.createTextNode(value.os_release));
+                        cellElem = trElem.insertCell(-1);
+                        cellElem.appendChild(document.createTextNode(value.cpu_num));
+                        cellElem = trElem.insertCell(-1);
+                        cellElem.appendChild(document.createTextNode(value.cpu_speed));
+                        cellElem = trElem.insertCell(-1);
+                        cellElem.appendChild(document.createTextNode(value.proc_total));
+                        cellElem = trElem.insertCell(-1);
+                        cellElem.appendChild(document.createTextNode(value.cpu_user));
+                        cellElem = trElem.insertCell(-1);
+                        cellElem.appendChild(document.createTextNode(value.cpu_nice));
+                        cellElem = trElem.insertCell(-1);
+                        cellElem.appendChild(document.createTextNode(value.cpu_system));
+                        cellElem = trElem.insertCell(-1);
+                        cellElem.appendChild(document.createTextNode(value.cpu_idle));
+                        cellElem = trElem.insertCell(-1);
+                        cellElem.appendChild(document.createTextNode(value.load_one));
+                        cellElem = trElem.insertCell(-1);
+                        cellElem.appendChild(document.createTextNode(value.load_five));
+                        cellElem = trElem.insertCell(-1);
+                        cellElem.appendChild(document.createTextNode(value.load_fifteen));
+                        cellElem = trElem.insertCell(-1);
+                        cellElem.appendChild(document.createTextNode(value.mem_total));
+                        cellElem = trElem.insertCell(-1);
+                        cellElem.appendChild(document.createTextNode(value.mem_free));
 
-                    cpuChart.data.datasets[0].data[0] = statusData.cpu_user;
-                    cpuChart.data.datasets[0].data[1] = statusData.cpu_nice;
-                    cpuChart.data.datasets[0].data[2] = statusData.cpu_system;
-                    cpuChart.data.datasets[0].data[3] = statusData.cpu_idle;
-                    cpuChart.update();
+                        /*
+                        cpuChart.data.datasets[0].data[0] = valuecpu_user;
+                        cpuChart.data.datasets[0].data[1] = valuecpu_nice;
+                        cpuChart.data.datasets[0].data[2] = valuecpu_system;
+                        cpuChart.data.datasets[0].data[3] = valuecpu_idle;
+                        cpuChart.update();
 
-                    memChart.data.datasets[0].data[1] = statusData.mem_free;
-                    memChart.data.datasets[0].data[0] = statusData.mem_total - statusData.mem_free;
-                    memChart.update();
+                        memChart.data.datasets[0].data[1] = valuemem_free;
+                        memChart.data.datasets[0].data[0] = valuemem_total - valuemem_free;
+                        memChart.update();
 
-                    let elem = document.getElementById("cpuUsage");
-                    elem.innerText = "CPU Usage: " + (Math.round(10000 - statusData.cpu_idle * 10000) / 100) + "%";
-                    let elem = document.getElementById("memUsage");
-                    elem.innerText = "Memory Usage: " + (Math.round((statusData.mem_total - statusData.mem_free) / 10000000) / 100) + "GB /" + (Math.round(statusData.mem_total / 10000000) / 100) + "GB";
-
+                        let elem = document.getElementById("cpuUsage");
+                        elem.innerText = "CPU Usage: " + (Math.round(10000 - valuecpu_idle * 10000) / 100) + "%";
+                        let elem = document.getElementById("memUsage");
+                        elem.innerText = "Memory Usage: " + (Math.round((valuemem_total - valuemem_free) / 10000000) / 100) + "GB /" + (Math.round(valuemem_total / 10000000) / 100) + "GB";
+                        */
+                    });
                 }
             }
 
@@ -140,7 +201,7 @@
             //console.log(lines);
             let postData = {
                 //'user': emailHash,
-            'script': lines
+                'script': lines
             };
             //console.log(postData);
             let postTxt = JSON.stringify(postData);
@@ -152,7 +213,7 @@
             }
 
             //webSocket.send(postTxt);
-            
+
             let postreq = new XMLHttpRequest();
             postreq.open('POST', 'https://127.0.0.1:8080/enqueue');
             postreq.setRequestHeader('content-type', 'application/json');
@@ -176,6 +237,7 @@
         let memUsedVar = 0;
         let memFreeVar = 0;
 
+        /*
         let cpuChartCtx = document.getElementById('cpuUsageChart');
         let cpuChart = new Chart(cpuChartCtx, {
             type: 'doughnut',
@@ -239,6 +301,7 @@
                 }
             }
         });
+        */
 
         getStatus();
     </script>
