@@ -9,6 +9,7 @@ use actix_redis::{Command as RCmd, RedisActor};
 use actix_web::{post, web, Error, HttpRequest, HttpResponse, Result};
 use actix_web_actors::ws;
 use redis_async::{resp::RespValue, resp_array};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 //use tokio::io::AsyncReadExt;
 //use tokio::net::TcpListener;
@@ -18,11 +19,13 @@ const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
 struct MyWS {
     hb: Instant,
+    redis: web::Data<Addr<RedisActor>>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Job {
     //user: String,
+    num: String,
     script: String,
 }
 
@@ -45,7 +48,7 @@ impl Actor for MyWS {
     fn started(&mut self, ctx: &mut Self::Context) {
         self.hb(ctx);
 
-        self.recv_tcp(ctx);
+        //self.recv_tcp(ctx);
     }
 }
 
@@ -60,7 +63,38 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWS {
             Ok(ws::Message::Pong(_)) => {
                 self.hb = Instant::now();
             }
-            Ok(ws::Message::Text(text)) => ctx.text(text),
+            Ok(ws::Message::Text(text)) => {
+                let re = Regex::new(r"JOBID=[0-9]+-[0-9]+").expect("regex error");
+                match re.find(&text) {
+                    Some(m) => {
+                        let rec = ctx.address().recipient();
+                        let fut = async move {
+                            let mut id = m.as_str().to_string();
+                            for _ in 0..6 {
+                                id.remove(0);
+                            }
+                            let res = self.redis.send(RCmd(resp_array!["XREAD", "STREAMS", "jobStream", "0"])).await.unwrap();
+                            match res {
+                                Ok(RespValue::Array(a)) => {
+                                    // a
+                                }
+                            }
+                            loop {
+                                /*
+                                let mut outputs = OUTPUTS.get().unwrap().lock().await;
+                                while let Some(output) = outputs.pop_front() {
+                                    println!("{:?}", &output);
+                                    rec.do_send(OutLn { line: output })
+                                        .expect("failed to send string");
+                                }
+                                */
+                            }
+                        };
+                        fut.into_actor(self).spawn(ctx);
+                    }
+                    None => println!("{}", text)
+                }
+            }
             Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
             Ok(ws::Message::Close(reason)) => {
                 ctx.close(reason);
@@ -72,8 +106,11 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWS {
 }
 
 impl MyWS {
-    fn new() -> Self {
-        Self { hb: Instant::now() }
+    fn new(redis: web::Data<Addr<RedisActor>>) -> Self {
+        Self {
+            hb: Instant::now(),
+            redis: redis
+        }
     }
 
     fn hb(&self, ctx: &mut <Self as Actor>::Context) {
@@ -113,6 +150,8 @@ async fn enqueue_job(
             "XADD",
             "jobStream",
             "*",
+            "num",
+            &job.num,
             "script",
             &job.script
         ]))
@@ -129,7 +168,7 @@ async fn enqueue_job(
     }
 }
 
-pub async fn script_start(req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, Error> {
-    let res = ws::start(MyWS::new(), &req, stream);
+pub async fn script_start(req: HttpRequest, stream: web::Payload, redis: web::Data<Addr<RedisActor>>) -> Result<HttpResponse, Error> {
+    let res = ws::start(MyWS::new(redis), &req, stream);
     res
 }

@@ -197,10 +197,11 @@
             //let emailHash = await digestMessage(inputEmail.value.toString());
 
             let lines = inputScript.value.toString();
-            let parallelNum = document.getElementById('parallelNum').value;
+            let parallelNum = document.getElementById('parallelNum').value.toString;
             //console.log(lines);
             let postData = {
                 //'user': emailHash,
+                'num': parallelNum,
                 'script': lines
             };
             //console.log(postData);
