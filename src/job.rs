@@ -2,24 +2,33 @@ use crate::tcp_connector::*;
 
 use std::str;
 use std::time::{Duration, Instant};
+use std::sync::Arc;
 
 use actix::prelude::*;
 use actix::AsyncContext;
 use actix_redis::{Command as RCmd, RedisActor};
 use actix_web::{post, web, Error, HttpRequest, HttpResponse, Result};
 use actix_web_actors::ws;
-use redis_async::{resp::RespValue, resp_array};
+use redis_async::{resp::{RespValue, FromResp}, resp_array};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use tokio::sync::Mutex;
 //use tokio::io::AsyncReadExt;
 //use tokio::net::TcpListener;
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
+#[derive(Clone)]
 struct MyWS {
     hb: Instant,
     redis: web::Data<Addr<RedisActor>>
+}
+
+#[derive(Deserialize, Debug)]
+struct JobId {
+    first_id: String,
+    last_id: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -64,36 +73,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWS {
                 self.hb = Instant::now();
             }
             Ok(ws::Message::Text(text)) => {
-                let re = Regex::new(r"JOBID=[0-9]+-[0-9]+").expect("regex error");
-                match re.find(&text) {
-                    Some(m) => {
-                        let rec = ctx.address().recipient();
-                        let fut = async move {
-                            let mut id = m.as_str().to_string();
-                            for _ in 0..6 {
-                                id.remove(0);
-                            }
-                            let res = self.redis.send(RCmd(resp_array!["XREAD", "STREAMS", "jobStream", "0"])).await.unwrap();
-                            match res {
-                                Ok(RespValue::Array(a)) => {
-                                    // a
-                                }
-                            }
-                            loop {
-                                /*
-                                let mut outputs = OUTPUTS.get().unwrap().lock().await;
-                                while let Some(output) = outputs.pop_front() {
-                                    println!("{:?}", &output);
-                                    rec.do_send(OutLn { line: output })
-                                        .expect("failed to send string");
-                                }
-                                */
-                            }
-                        };
-                        fut.into_actor(self).spawn(ctx);
-                    }
-                    None => println!("{}", text)
-                }
+                self.recv_log(ctx, text);
             }
             Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
             Ok(ws::Message::Close(reason)) => {
@@ -124,16 +104,31 @@ impl MyWS {
         });
     }
 
-    fn recv_tcp(&self, ctx: &mut <Self as Actor>::Context) {
+    fn recv_log(&self, ctx: &mut <Self as Actor>::Context, json_string: String) {
+        let redis_arc = Arc::new(self.redis.clone());
+        let job_id: JobId = serde_json::from_str(json_string.trim()).unwrap();
         let rec = ctx.address().recipient();
         let fut = async move {
+            let res = &redis_arc.send(RCmd(resp_array!["XREAD", "STREAMS", format!("{}-{}_output", job_id.first_id, job_id.last_id), "0"])).await.unwrap();
+            match res {
+                Ok(RespValue::Array(a)) => {
+                    while let RespValue::BulkString(line) = FromResp::from_resp(a.clone().remove(0)).unwrap() {
+                        println!("{}", str::from_utf8(&line).unwrap());
+                    }
+                    println!("{:?}", a);
+                }
+                Ok(o) => println!("not array: {:?}", o),
+                Err(e) => eprintln!("{:?}", e)
+            }
             loop {
+                /*
                 let mut outputs = OUTPUTS.get().unwrap().lock().await;
                 while let Some(output) = outputs.pop_front() {
                     println!("{:?}", &output);
                     rec.do_send(OutLn { line: output })
                         .expect("failed to send string");
                 }
+                */
             }
         };
         fut.into_actor(self).spawn(ctx);
