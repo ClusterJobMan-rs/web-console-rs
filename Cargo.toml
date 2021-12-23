@@ -13,11 +13,10 @@ dotenv = "*"
 openssl = { version = "0.10", features = ["v110"] }
 once_cell = "*"
 redis-async = "*"
-regex = "*"
 sys-info = "*"
 systemstat = "*"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "*", features = ["process", "net"] }
+tokio = { version = "*", features = ["process"] }
 tokio-util = { version = "*", features = ["codec"] }
 futures = "*"

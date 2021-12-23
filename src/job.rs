@@ -1,5 +1,3 @@
-use crate::tcp_connector::*;
-
 use std::str;
 use std::time::{Duration, Instant};
 use std::sync::Arc;
@@ -10,11 +8,7 @@ use actix_redis::{Command as RCmd, RedisActor};
 use actix_web::{post, web, Error, HttpRequest, HttpResponse, Result};
 use actix_web_actors::ws;
 use redis_async::{resp::{RespValue, FromResp}, resp_array};
-use regex::Regex;
 use serde::{Deserialize, Serialize};
-use tokio::sync::Mutex;
-//use tokio::io::AsyncReadExt;
-//use tokio::net::TcpListener;
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
@@ -112,23 +106,40 @@ impl MyWS {
             let res = &redis_arc.send(RCmd(resp_array!["XREAD", "STREAMS", format!("{}-{}_output", job_id.first_id, job_id.last_id), "0"])).await.unwrap();
             match res {
                 Ok(RespValue::Array(a)) => {
-                    while let RespValue::BulkString(line) = FromResp::from_resp(a.clone().remove(0)).unwrap() {
-                        println!("{}", str::from_utf8(&line).unwrap());
+                    let a1: Vec<RespValue> = FromResp::from_resp(a[0].clone()).unwrap();
+                    let a2: Vec<RespValue> = FromResp::from_resp(a1[1].clone()).unwrap();
+                    for line in a2 {
+                        let a3: Vec<RespValue> = FromResp::from_resp(line.clone()).unwrap();
+                        let a4: Vec<RespValue> = FromResp::from_resp(a3[1].clone()).unwrap();
+                        let a5: Vec<u8> = FromResp::from_resp(a4[1].clone()).unwrap();
+                        //println!("{}", str::from_utf8(&a5).unwrap().to_string());
+                        rec.do_send(OutLn { line: str::from_utf8(&a5).unwrap().to_string() })
+                            .expect("failed to send string");
                     }
-                    println!("{:?}", a);
+                    //println!("{:?}", a2[0]);
                 }
                 Ok(o) => println!("not array: {:?}", o),
                 Err(e) => eprintln!("{:?}", e)
             }
             loop {
-                /*
-                let mut outputs = OUTPUTS.get().unwrap().lock().await;
-                while let Some(output) = outputs.pop_front() {
-                    println!("{:?}", &output);
-                    rec.do_send(OutLn { line: output })
-                        .expect("failed to send string");
+                let res = &redis_arc.send(RCmd(resp_array!["XREAD", "BLOCK", "0", "STREAMS", format!("{}-{}_output", job_id.first_id, job_id.last_id), "$"])).await.unwrap();
+                match res {
+                    Ok(RespValue::Array(a)) => {
+                        let a1: Vec<RespValue> = FromResp::from_resp(a[0].clone()).unwrap();
+                        let a2: Vec<RespValue> = FromResp::from_resp(a1[1].clone()).unwrap();
+                        for line in a2 {
+                            let a3: Vec<RespValue> = FromResp::from_resp(line.clone()).unwrap();
+                            let a4: Vec<RespValue> = FromResp::from_resp(a3[1].clone()).unwrap();
+                            let a5: Vec<u8> = FromResp::from_resp(a4[1].clone()).unwrap();
+                            //println!("{}", str::from_utf8(&a5).unwrap().to_string());
+                            rec.do_send(OutLn { line: str::from_utf8(&a5).unwrap().to_string() })
+                                .expect("failed to send string");
+                        }
+                        //println!("{:?}", a2[0]);
+                    }
+                    Ok(_) => (),
+                    Err(e) => eprintln!("{:?}", e)
                 }
-                */
             }
         };
         fut.into_actor(self).spawn(ctx);

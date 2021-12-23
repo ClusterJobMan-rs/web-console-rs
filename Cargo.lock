@@ -2349,7 +2349,6 @@ dependencies = [
  "once_cell",
  "openssl",
  "redis-async",
- "regex",
  "serde",
  "serde_json",
  "sys-info",

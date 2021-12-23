@@ -1,18 +1,13 @@
 pub mod job;
 pub mod monitor;
-pub mod tcp_connector;
 
 use crate::job::*;
 use crate::monitor::*;
-use crate::tcp_connector::*;
-
-use std::collections::VecDeque;
 
 use actix_files::NamedFile;
 use actix_redis::RedisActor;
 use actix_web::{get, web, App, HttpRequest, HttpServer, Result};
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
-use tokio::sync::Mutex;
 
 #[get("/")]
 async fn index(req: HttpRequest) -> Result<NamedFile> {
@@ -41,17 +36,6 @@ async fn main() -> std::io::Result<()> {
         .set_private_key_file("key.pem", SslFiletype::PEM)
         .unwrap();
     builder.set_certificate_chain_file("cert.pem").unwrap();
-
-    STREAMS.set(Mutex::new(VecDeque::new())).unwrap();
-    OUTPUTS.set(Mutex::new(VecDeque::new())).unwrap();
-
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:33333")
-        .await
-        .expect("could not bind tcp socket");
-
-    tokio::spawn(async move {
-        receiver(listener).await;
-    });
 
     HttpServer::new(|| {
         let redis_addr = RedisActor::start("127.0.0.1:6379");
