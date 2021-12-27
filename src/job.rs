@@ -28,6 +28,7 @@ struct JobId {
 #[derive(Serialize, Deserialize, Debug)]
 struct Job {
     //user: String,
+    dir: String,
     num: String,
     script: String,
 }
@@ -156,6 +157,8 @@ async fn enqueue_job(
             "XADD",
             "jobStream",
             "*",
+            "dir",
+            &job.dir,
             "num",
             &job.num,
             "script",
@@ -164,8 +167,9 @@ async fn enqueue_job(
         .await?;
     match res {
         Ok(RespValue::BulkString(id)) => {
-            println!("{}", str::from_utf8(&id).unwrap());
-            Ok(HttpResponse::Ok().body("Successfully enqueued job"))
+            //println!("{}", str::from_utf8(&id).unwrap());
+            let resp_string = str::from_utf8(&id).unwrap().to_string();
+            Ok(HttpResponse::Ok().body(resp_string))
         }
         _ => {
             println!("---->{:?}", res);

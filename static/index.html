@@ -11,6 +11,8 @@
     <textarea cols="80" rows="40" id="input" style="overflow:scroll; font-family:monospace;"></textarea>
     <textarea readonly cols="80" rows="40" id="output" style="overflow:scroll; font-family:monospace;"></textarea>
     <br>
+    <input id="workDir" type="text" value="/mnt/nfs/">
+    <br>
     <input id="parallelNum" type="number" value="1" min="1">
     <button type="submit" id="sendButton" style="font-size: 20px;">Send</button>
     <button type="submit" id="clearButton" style="font-size: 20px;">Clear</button>
@@ -197,10 +199,12 @@
             //let emailHash = await digestMessage(inputEmail.value.toString());
 
             let lines = inputScript.value.toString();
+            let workDir = document.getElementById('workDir').value.toString;
             let parallelNum = document.getElementById('parallelNum').value.toString;
             //console.log(lines);
             let postData = {
                 //'user': emailHash,
+                'dir': workDir,
                 'num': parallelNum,
                 'script': lines
             };
