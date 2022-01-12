@@ -29,15 +29,13 @@ impl Nodes {
 
 #[derive(Serialize, Deserialize)]
 struct Status {
+    hostname: String,
     os_type: String,
     os_release: String,
     cpu_num: u32,
     cpu_speed: u64,
     proc_total: u64,
-    cpu_user: f32,
-    cpu_nice: f32,
-    cpu_system: f32,
-    cpu_idle: f32,
+    cpu_usage: HashMap<String, f32>,
     load_one: f32,
     load_five: f32,
     load_fifteen: f32,
@@ -48,15 +46,13 @@ struct Status {
 impl Status {
     fn new() -> Status {
         Status {
+            hostname: String::new(),
             os_type: String::new(),
             os_release: String::new(),
             cpu_num: 0,
             cpu_speed: 0,
             proc_total: 0,
-            cpu_user: 0.0,
-            cpu_nice: 0.0,
-            cpu_system: 0.0,
-            cpu_idle: 0.0,
+            cpu_usage: HashMap::new(),
             load_one: 0.0,
             load_five: 0.0,
             load_fifteen: 0.0,
@@ -118,30 +114,6 @@ async fn get_status(redis: web::Data<Addr<RedisActor>>) -> HttpResponse {
                                                 .unwrap()
                                                 .parse::<u64>()
                                                 .unwrap();
-                                                status.cpu_user = String::from_utf8(
-                                                    FromResp::from_resp(v[5].clone()).unwrap(),
-                                                )
-                                                .unwrap()
-                                                .parse::<f32>()
-                                                .unwrap();
-                                                status.cpu_nice = String::from_utf8(
-                                                    FromResp::from_resp(v[6].clone()).unwrap(),
-                                                )
-                                                .unwrap()
-                                                .parse::<f32>()
-                                                .unwrap();
-                                                status.cpu_system = String::from_utf8(
-                                                    FromResp::from_resp(v[7].clone()).unwrap(),
-                                                )
-                                                .unwrap()
-                                                .parse::<f32>()
-                                                .unwrap();
-                                                status.cpu_idle = String::from_utf8(
-                                                    FromResp::from_resp(v[8].clone()).unwrap(),
-                                                )
-                                                .unwrap()
-                                                .parse::<f32>()
-                                                .unwrap();
                                                 status.load_one = String::from_utf8(
                                                     FromResp::from_resp(v[9].clone()).unwrap(),
                                                 )
@@ -184,6 +156,37 @@ async fn get_status(redis: web::Data<Addr<RedisActor>>) -> HttpResponse {
                                     Err(e) => {
                                         panic!("{:?}", e);
                                     }
+                                }
+                                match redis
+                                    .send(RCmd(resp_array![
+                                        "HGETALL",
+                                        format!("{}_cpu_usage", format!("{}", addr))
+                                    ]))
+                                    .await
+                                {
+                                    Ok(err) => match err {
+                                        Ok(resp) => match resp {
+                                            RespValue::Array(arr) => {
+                                                for i in 0..arr.len()/2 {
+                                                    status.cpu_usage.insert(
+                                                        String::from_utf8(
+                                                            FromResp::from_resp(v[i*2].clone()).unwrap(),
+                                                        )
+                                                        .unwrap(),
+                                                        String::from_utf8(
+                                                            FromResp::from_resp(v[i*2+1].clone()).unwrap(),
+                                                        )
+                                                        .unwrap()
+                                                        .parse::<f32>()
+                                                        .unwrap()
+                                                    );
+                                                }
+                                            }
+                                            _ => panic!("not array")
+                                        }
+                                        Err(e) => panic!("{:?}", e)
+                                    }
+                                    Err(e) => panic!("{:?}", e)
                                 }
                                 nodes.add(addr, status);
                             }
