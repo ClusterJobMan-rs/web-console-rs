@@ -1,8 +1,10 @@
 pub mod job;
 pub mod monitor;
+pub mod file;
 
 use crate::job::*;
 use crate::monitor::*;
+use crate::file::*;
 
 use actix_files::NamedFile;
 use actix_redis::RedisActor;
@@ -45,6 +47,8 @@ async fn main() -> std::io::Result<()> {
             .service(index)
             .service(get_status)
             .service(enqueue_job)
+            .service(get_dir)
+            .service(upload)
             .service(web::resource("/ws/").route(web::get().to(script_start)))
             .default_service(web::route().to(not_found))
     })

@@ -6,18 +6,20 @@
 </head>
 
 <body>
-    <h3>Execute bash script</h3>
+    <h3>Execute MPI Job</h3>
     <!-- ><p>Your E-mail address <input type="text" id="email"></p><-->
-    <textarea cols="80" rows="40" id="input" style="overflow:scroll; font-family:monospace;"></textarea>
-    <textarea readonly cols="80" rows="40" id="output" style="overflow:scroll; font-family:monospace;"></textarea>
+    <textarea cols="80" rows="10" id="input" style="overflow:scroll; font-family:monospace;"></textarea>
+    <textarea readonly cols="80" rows="10" id="output" style="overflow:scroll; font-family:monospace;"></textarea>
     <br>
     <input id="workDir" type="text" value="/mnt/nfs/">
     <br>
     <input id="parallelNum" type="number" value="1" min="1">
     <button type="submit" id="sendButton" style="font-size: 20px;">Send</button>
     <button type="submit" id="clearButton" style="font-size: 20px;">Clear</button>
-
-    <table>
+    <br>
+    <input id="jobid" type="text">
+    <button type="submit" id="getOutput" style="font-size: 20px;">Send</button>
+    <table border="1" style="border-collapse: collapse">
         <thead>
             <tr>
                 <td rowspan="2">host</td>
@@ -28,14 +30,14 @@
             </tr>
             <tr>
                 <td>Type</td>
-                <td>Release</td>
+                <td>Kernel</td>
                 <td>Num</td>
                 <td>Speed</td>
                 <td>Proc Total</td>
-                <td>User</td>
-                <td>Nice</td>
-                <td>System</td>
-                <td>Idle</td>
+                <td>CPU0</td>
+                <td>CPU1</td>
+                <td>CPU2</td>
+                <td>CPU3</td>
                 <td>One</td>
                 <td>Five</td>
                 <td>Fifteen</td>
@@ -104,16 +106,16 @@
                         let trElems = tbody.rows;
                         let newNode = true;
                         for (i = 0; i < trElems.length; i++) {
-                            if (trElems[i].cells[0].firstChild.data == key) {
+                            if (trElems[i].cells[0].firstChild.data == value.hostname) {
                                 trElems[i].cells[1].firstChild.data = value.os_type;
                                 trElems[i].cells[2].firstChild.data = value.os_release;
                                 trElems[i].cells[3].firstChild.data = value.cpu_num;
                                 trElems[i].cells[4].firstChild.data = value.cpu_speed;
                                 trElems[i].cells[5].firstChild.data = value.proc_total;
-                                trElems[i].cells[6].firstChild.data = value.cpu_user;
-                                trElems[i].cells[7].firstChild.data = value.cpu_nice;
-                                trElems[i].cells[8].firstChild.data = value.cpu_system;
-                                trElems[i].cells[9].firstChild.data = value.cpu_idle;
+                                trElems[i].cells[6].firstChild.data = value.cpu_usage.cpu0;
+                                trElems[i].cells[7].firstChild.data = value.cpu_usage.cpu1;
+                                trElems[i].cells[8].firstChild.data = value.cpu_usage.cpu2;
+                                trElems[i].cells[9].firstChild.data = value.cpu_usage.cpu3;
                                 trElems[i].cells[10].firstChild.data = value.load_one;
                                 trElems[i].cells[11].firstChild.data = value.load_five;
                                 trElems[i].cells[12].firstChild.data = value.load_fifteen;
@@ -126,7 +128,7 @@
                         if (!newNode) return;
                         let trElem = tbody.insertRow(-1);
                         let cellElem = trElem.insertCell(-1);
-                        cellElem.appendChild(document.createTextNode(key));
+                        cellElem.appendChild(document.createTextNode(value.hostname));
                         cellElem = trElem.insertCell(-1);
                         cellElem.appendChild(document.createTextNode(value.os_type));
                         cellElem = trElem.insertCell(-1);
@@ -138,13 +140,13 @@
                         cellElem = trElem.insertCell(-1);
                         cellElem.appendChild(document.createTextNode(value.proc_total));
                         cellElem = trElem.insertCell(-1);
-                        cellElem.appendChild(document.createTextNode(value.cpu_user));
+                        cellElem.appendChild(document.createTextNode(value.cpu_usage.cpu0));
                         cellElem = trElem.insertCell(-1);
-                        cellElem.appendChild(document.createTextNode(value.cpu_nice));
+                        cellElem.appendChild(document.createTextNode(value.cpu_usage.cpu1));
                         cellElem = trElem.insertCell(-1);
-                        cellElem.appendChild(document.createTextNode(value.cpu_system));
+                        cellElem.appendChild(document.createTextNode(value.cpu_usage.cpu2));
                         cellElem = trElem.insertCell(-1);
-                        cellElem.appendChild(document.createTextNode(value.cpu_idle));
+                        cellElem.appendChild(document.createTextNode(value.cpu_usage.cpu3));
                         cellElem = trElem.insertCell(-1);
                         cellElem.appendChild(document.createTextNode(value.load_one));
                         cellElem = trElem.insertCell(-1);
@@ -189,6 +191,8 @@
         let inputScript = document.getElementById('input');
         let output = document.getElementById('output');
 
+        let inputJobId = document.getElementById('jobid');
+
         webSocket.onmessage = function (event) {
             console.log(event.data);
             output.value += event.data + '\n';
@@ -199,8 +203,8 @@
             //let emailHash = await digestMessage(inputEmail.value.toString());
 
             let lines = inputScript.value.toString();
-            let workDir = document.getElementById('workDir').value.toString;
-            let parallelNum = document.getElementById('parallelNum').value.toString;
+            let workDir = document.getElementById('workDir').value.toString();
+            let parallelNum = document.getElementById('parallelNum').value.toString();
             //console.log(lines);
             let postData = {
                 //'user': emailHash,
@@ -210,7 +214,7 @@
             };
             //console.log(postData);
             let postTxt = JSON.stringify(postData);
-            //console.log(postTxt);
+            console.log(postTxt);
 
             if (!isEstalbished) {
                 console.log("Connection is not estalbished.");
@@ -231,8 +235,13 @@
                     console.log("failed");
                 } else {
                     console.log(postreq.responseText);
+                    inputJobId.value = postreq.responseText;
                 }
             }
+        }
+
+        document.getElementById('getOutput').onclick = function () {
+            webSocket.send(inputJobId.value)
         }
 
         document.getElementById('clearButton').onclick = function () {

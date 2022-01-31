@@ -7,12 +7,15 @@ actix = "*"
 actix-files = "0.5.0"
 actix-web = { version = "3", features = ["openssl"] }
 actix-web-actors = "*"
+actix-multipart = "*"
 actix-redis = "*"
 actix-rt = "*"
 dotenv = "*"
+futures-util = "*"
 openssl = { version = "0.10", features = ["v110"] }
 once_cell = "*"
 redis-async = "*"
+sanitize-filename = "*"
 sys-info = "*"
 systemstat = "*"
 serde = { version = "1.0", features = ["derive"] }

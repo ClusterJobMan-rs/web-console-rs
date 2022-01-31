@@ -99,12 +99,11 @@ impl MyWS {
         });
     }
 
-    fn recv_log(&self, ctx: &mut <Self as Actor>::Context, json_string: String) {
+    fn recv_log(&self, ctx: &mut <Self as Actor>::Context, jobid: String) {
         let redis_arc = Arc::new(self.redis.clone());
-        let job_id: JobId = serde_json::from_str(json_string.trim()).unwrap();
         let rec = ctx.address().recipient();
         let fut = async move {
-            let res = &redis_arc.send(RCmd(resp_array!["XREAD", "STREAMS", format!("{}-{}_output", job_id.first_id, job_id.last_id), "0"])).await.unwrap();
+            let res = &redis_arc.send(RCmd(resp_array!["XREAD", "STREAMS", format!("{}_output", jobid), "0"])).await.unwrap();
             match res {
                 Ok(RespValue::Array(a)) => {
                     let a1: Vec<RespValue> = FromResp::from_resp(a[0].clone()).unwrap();
@@ -123,7 +122,7 @@ impl MyWS {
                 Err(e) => eprintln!("{:?}", e)
             }
             loop {
-                let res = &redis_arc.send(RCmd(resp_array!["XREAD", "BLOCK", "0", "STREAMS", format!("{}-{}_output", job_id.first_id, job_id.last_id), "$"])).await.unwrap();
+                let res = &redis_arc.send(RCmd(resp_array!["XREAD", "BLOCK", "0", "STREAMS", format!("{}_output", jobid), "$"])).await.unwrap();
                 match res {
                     Ok(RespValue::Array(a)) => {
                         let a1: Vec<RespValue> = FromResp::from_resp(a[0].clone()).unwrap();
@@ -169,6 +168,7 @@ async fn enqueue_job(
         Ok(RespValue::BulkString(id)) => {
             //println!("{}", str::from_utf8(&id).unwrap());
             let resp_string = str::from_utf8(&id).unwrap().to_string();
+            //redis.send(RCmd(resp_array!["SADD", "jobids", &resp_string])).await?;
             Ok(HttpResponse::Ok().body(resp_string))
         }
         _ => {
