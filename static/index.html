@@ -6,18 +6,37 @@
 </head>
 
 <body>
-    <h3>Execute MPI Job</h3>
+    <h3>Execute MPI job</h3>
+    <p>Job script</p>
     <textarea cols="80" rows="10" id="input" style="overflow:scroll; font-family:monospace;"></textarea>
+    <p>Output</p>
     <textarea readonly cols="80" rows="10" id="output" style="overflow:scroll; font-family:monospace;"></textarea>
     <br>
-    <input id="workDir" type="text" value="/mnt/nfs/">
+    <p>Working directory</p>
+    <input id="workDir" type="text" value="/mnt/nfs/" readonly>
     <br>
+    <p>Create new directory</p>
+    <input id="newDir" type="text">
+    <button type="submit" id="mkdirButton" style="font-size: 20px;">Create directory</button>
+    <br>
+    <p>Directories</p>
+    <select id="dirs" size="8"></select>
+    <br>
+    <p>Files</p>
+    <select id="files" size="8"></select>
+    <br>
+    <p>Upload file</p>
+    <input type="file" id="uploadFile">
+    <button type="submit" id="uploadButton" style="font-size: 20px;">Upload</button>
+    <p>Parallel num</p>
     <input id="parallelNum" type="number" value="1" min="1">
-    <button type="submit" id="sendButton" style="font-size: 20px;">Send</button>
-    <button type="submit" id="clearButton" style="font-size: 20px;">Clear</button>
     <br>
+    <button type="submit" id="sendButton" style="font-size: 20px;">Send job</button>
+    <button type="submit" id="clearButton" style="font-size: 20px;">Clear job</button>
+    <br>
+    <p>Job ID</p>
     <input id="jobid" type="text">
-    <button type="submit" id="getOutput" style="font-size: 20px;">Send</button>
+    <button type="submit" id="getOutput" style="font-size: 20px;">Receive output</button>
     <table border="1" style="border-collapse: collapse">
         <thead>
             <tr>
@@ -47,45 +66,65 @@
         <tbody id="status"></tbody>
     </table>
 
-    <!--
-    <h4>Server OS</h4>
-    <p><span id="osType">null</span></p>
-    <p><span id="osRelease">null</span></p>
-    <h4>CPU</h4>
-    <p>num : <span id="cpuNum">null</span></p>
-    <p>speed : <span id="cpuSpeed">null</span></p>
-    <p>proc_total : <span id="cpuProcTotal">null</span></p>
-    <p>user : <span id="cpuUser">null</span></p>
-    <p>nice : <span id="cpuNice">null</span></p>
-    <p>system : <span id="cpuSystem">null</span></p>
-    <p>idle : <span id="cpuIdle">null</span></p>
-    <p>load_one : <span id="cpuLoadOne">null</span></p>
-    <p>load_five : <span id="cpuLoadFive">null</span></p>
-    <p>load_fifteen : <span id="cpuLoadFifteen">null</span></p>
-    <h4>Memory</h4>
-    <p>total : <span id="memTotal">null</span></p>
-    <p>free : <span id="memFree">null</span></p>
-
-    <div style="display:flex; margin: 30px; padding: 30px;">
-        <div class="chart-wrap" style="position: relative; height:300px; width: 300px;">
-            <canvas id="cpuUsageChart"></canvas>
-            <p id="cpuUsage">CPU Usage: </p>
-        </div>
-
-        <div class="chart-wrap" style="height:300px; width:300px">
-            <canvas id="memUsageChart"></canvas>
-            <p id="memUsage">Memory Usage: </p>
-        </div>
-    </div>
-    -->
-
-    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.6.0/chart.js"
-        integrity="sha512-CWVDkca3f3uAWgDNVzW+W4XJbiC3CH84P2aWZXj+DqI6PNbTzXbl1dIzEHeNJpYSn4B6U8miSZb/hCws7FnUZA=="
-        crossorigin="anonymous" referrerpolicy="no-referrer"></script>-->
 
     <script>
         function wait(t) {
             return new Promise(resolve => setTimeout(resolve, t));
+        }
+
+        async function getDirs() {
+            let postData = {
+                'dir': '/mnt/nfs'
+            };
+            let postTxt = JSON.stringify(postData);
+
+            let postreq = new XMLHttpRequest();
+            postreq.open('POST', 'https://127.0.0.1:8080/dir');
+            postreq.setRequestHeader('content-type', 'application/json');
+            await postreq.send(postTxt);
+
+            postreq.onreadystatechange = function () {
+                if (postreq.readyState != 4) {
+                    console.log("readyState != 4");
+                } else if (postreq.status != 200) {
+                    console.log("failed");
+                } else {
+                    dirsData = JSON.parse(postreq.responseText);
+                    for (let dir of dirsData.filenames) {
+                        var newElement = new Option(dir, dir);
+                        dirsElement.add(newElement);
+                    }
+                }
+            }
+        }
+
+        async function getFiles() {
+            while (filesElement.lastChild) {
+                filesElement.removeChild(filesElement.lastChild);
+            }
+            let postData = {
+                'dir': workDir.value.toString()
+            };
+            let postTxt = JSON.stringify(postData);
+
+            let postreq = new XMLHttpRequest();
+            postreq.open('POST', 'https://127.0.0.1:8080/dir');
+            postreq.setRequestHeader('content-type', 'application/json');
+            await postreq.send(postTxt);
+
+            postreq.onreadystatechange = function () {
+                if (postreq.readyState != 4) {
+                    console.log("readyState != 4");
+                } else if (postreq.status != 200) {
+                    console.log("failed");
+                } else {
+                    filesData = JSON.parse(postreq.responseText);
+                    for (let file of filesData.filenames) {
+                        var newElement = new Option(file, file);
+                        filesElement.add(newElement);
+                    }
+                }
+            }
         }
 
         async function getStatus() {
@@ -157,22 +196,7 @@
                         cellElem = trElem.insertCell(-1);
                         cellElem.appendChild(document.createTextNode(value.mem_free));
 
-                        /*
-                        cpuChart.data.datasets[0].data[0] = valuecpu_user;
-                        cpuChart.data.datasets[0].data[1] = valuecpu_nice;
-                        cpuChart.data.datasets[0].data[2] = valuecpu_system;
-                        cpuChart.data.datasets[0].data[3] = valuecpu_idle;
-                        cpuChart.update();
-
-                        memChart.data.datasets[0].data[1] = valuemem_free;
-                        memChart.data.datasets[0].data[0] = valuemem_total - valuemem_free;
-                        memChart.update();
-
-                        let elem = document.getElementById("cpuUsage");
-                        elem.innerText = "CPU Usage: " + (Math.round(10000 - valuecpu_idle * 10000) / 100) + "%";
-                        let elem = document.getElementById("memUsage");
-                        elem.innerText = "Memory Usage: " + (Math.round((valuemem_total - valuemem_free) / 10000000) / 100) + "GB /" + (Math.round(valuemem_total / 10000000) / 100) + "GB";
-                        */
+                  
                     });
                 }
             }
@@ -190,7 +214,17 @@
         let inputScript = document.getElementById('input');
         let output = document.getElementById('output');
 
+        let dirsElement = document.getElementById('dirs');
+        let filesElement = document.getElementById('files');
+        getDirs();
         let inputJobId = document.getElementById('jobid');
+
+        let workDir = document.getElementById('workDir');
+
+        dirsElement.onchange = function () {
+            workDir.value = dirsElement.value;
+            getFiles();
+        }
 
         webSocket.onmessage = function (event) {
             console.log(event.data);
@@ -198,16 +232,37 @@
             output.scrollTop = output.scrollHeight;
         }
 
+        document.getElementById('uploadButton').onclick = function () {
+            let formData = new FormData();
+
+            formData.append("directory", workDir.value.toString());
+            formData.append("file", document.getElementById("uploadFile").files[0]);
+
+            let postreq = new XMLHttpRequest();
+            postreq.open('POST', 'https://127.0.0.1:8080/upload');
+            postreq.send(formData);
+            
+            postreq.onreadystatechange = function () {
+                if (postreq.readyState != 4) {
+                    console.log("readyState != 4");
+                } else if (postreq.status != 200) {
+                    console.log("failed");
+                } else {
+                    getFiles();
+                }
+            }
+        }
+
         document.getElementById('sendButton').onclick = function () {
             //let emailHash = await digestMessage(inputEmail.value.toString());
 
             let lines = inputScript.value.toString();
-            let workDir = document.getElementById('workDir').value.toString();
+            //let workDir = document.getElementById('workDir').value.toString();
             let parallelNum = document.getElementById('parallelNum').value.toString();
             //console.log(lines);
             let postData = {
                 //'user': emailHash,
-                'dir': workDir,
+                'dir': workDir.value.toString(),
                 'num': parallelNum,
                 'script': lines
             };
@@ -249,72 +304,6 @@
 
         let memUsedVar = 0;
         let memFreeVar = 0;
-
-        /*
-        let cpuChartCtx = document.getElementById('cpuUsageChart');
-        let cpuChart = new Chart(cpuChartCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ["User", "Nice", "System", "Idle"],
-                datasets: [{
-                    backgroundColor: [
-                        "#00fa9a",
-                        "#ff8c00",
-                        "#8a2be2",
-                        "#a9a9a9"
-                    ],
-                    data: [0, 0, 0, 0]
-                }]
-            },
-            options: {
-                responsive: false,
-                cutoutPercentage: 50,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'CPU Usage',
-                        font: {
-                            size: 20
-                        }
-                    },
-                    legend: {
-                        position: 'right'
-                    }
-                }
-            }
-        });
-
-        let memChartCtx = document.getElementById('memUsageChart');
-        let memChart = new Chart(memChartCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ["Used", "Free"],
-                datasets: [{
-                    backgroundColor: [
-                        "#00bfff",
-                        "#a9a9a9"
-                    ],
-                    data: [0, 0]
-                }]
-            },
-            options: {
-                responsive: false,
-                cutoutPercentage: 50,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Memory Usage',
-                        font: {
-                            size: 20
-                        }
-                    },
-                    legend: {
-                        position: 'right'
-                    }
-                }
-            }
-        });
-        */
 
         getStatus();
     </script>

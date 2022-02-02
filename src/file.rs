@@ -29,7 +29,10 @@ impl Files {
 
 #[post("/dir")]
 async fn get_dir(dir: web::Json<Dir>) -> Result<HttpResponse, Error> {
-    let paths = fs::read_dir(&dir.dir).unwrap();
+    let paths = match fs::read_dir(&dir.dir) {
+        Ok(p) => p,
+        Err(_) => return Ok(HttpResponse::BadRequest().finish())
+    };
     let mut files = Files::new();
     for p in paths {
         files
