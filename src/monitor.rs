@@ -16,8 +16,8 @@ struct Nodes {
 }
 
 impl Nodes {
-    fn new() -> Nodes {
-        Nodes {
+    fn new() -> Self {
+        Self {
             nodes: HashMap::new(),
         }
     }
@@ -171,26 +171,30 @@ async fn get_status(redis: web::Data<Addr<RedisActor>>) -> HttpResponse {
                                     Ok(err) => match err {
                                         Ok(resp) => match resp {
                                             RespValue::Array(arr) => {
-                                                for i in 0..arr.len()/2 {
+                                                for i in 0..arr.len() / 2 {
                                                     status.cpu_usage.insert(
                                                         String::from_utf8(
-                                                            FromResp::from_resp(arr[i*2].clone()).unwrap(),
+                                                            FromResp::from_resp(arr[i * 2].clone())
+                                                                .unwrap(),
                                                         )
                                                         .unwrap(),
                                                         String::from_utf8(
-                                                            FromResp::from_resp(arr[i*2+1].clone()).unwrap(),
+                                                            FromResp::from_resp(
+                                                                arr[i * 2 + 1].clone(),
+                                                            )
+                                                            .unwrap(),
                                                         )
                                                         .unwrap()
                                                         .parse::<f32>()
-                                                        .unwrap()
+                                                        .unwrap(),
                                                     );
                                                 }
                                             }
-                                            _ => panic!("not array")
-                                        }
-                                        Err(e) => panic!("{:?}", e)
-                                    }
-                                    Err(e) => panic!("{:?}", e)
+                                            _ => panic!("not array"),
+                                        },
+                                        Err(e) => panic!("{:?}", e),
+                                    },
+                                    Err(e) => panic!("{:?}", e),
                                 }
                                 nodes.add(addr, status);
                             }

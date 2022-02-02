@@ -4,25 +4,40 @@ use std::fs;
 use std::io::Write;
 use std::str;
 
-use actix_web::{post, web, HttpResponse, Error};
 use actix_multipart::Multipart;
+use actix_web::{post, web, Error, HttpResponse};
 use futures_util::{StreamExt, TryStreamExt};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Dir {
     dir: String,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct Files {
+    filenames: Vec<String>,
+}
+
+impl Files {
+    fn new() -> Self {
+        Self {
+            filenames: Vec::new(),
+        }
+    }
+}
+
 #[post("/dir")]
 async fn get_dir(dir: web::Json<Dir>) -> Result<HttpResponse, Error> {
     let paths = fs::read_dir(&dir.dir).unwrap();
-    
+    let mut files = Files::new();
     for p in paths {
-        println!("{}", &p.unwrap().path().display());
+        files
+            .filenames
+            .push(format!("{}", &p.unwrap().path().display()));
     }
 
-    Ok(HttpResponse::Ok().into())
+    Ok(HttpResponse::Ok().json(files))
 }
 
 #[post("/upload")]
@@ -38,11 +53,14 @@ async fn upload(mut payload: Multipart) -> Result<HttpResponse, Error> {
                 let data = chunk.unwrap();
                 dir = match str::from_utf8(&data) {
                     Ok(s) => s.to_string().trim_end_matches("/").to_owned(),
-                    Err(e) => continue
+                    Err(_) => return Ok(HttpResponse::BadRequest().finish()),
                 }
             }
         // ファイルデータ
         } else if name == "file" {
+            if dir == "".to_string() {
+                return Ok(HttpResponse::InternalServerError().finish());
+            }
             let filename = content_type.get_filename().unwrap();
             let filepath = format!("{}/{}", dir, sanitize_filename::sanitize(&filename));
 
